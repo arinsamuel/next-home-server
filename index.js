@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const dotenv = require('dotenv');
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 dotenv.config();
 const port = process.env.PORT || 5000;
 
@@ -36,7 +36,7 @@ async function run() {
     app.post('/owner/add-property', async (req, res) => {
       const data = req.body;
       if (data.price) {
-        data.price = Number(data.price); 
+        data.price = Number(data.price);
       }
       const result = await propertyCollection.insertOne(data);
       res.send(result);
@@ -75,15 +75,24 @@ async function run() {
           .sort(sortOption)
           .toArray();
 
-        // যদি ডেটার প্রাইস স্ট্রিং আকারে সেভ হয়ে থাকে, তাহলে সর্টিং নিখুঁত করতে
-        // ডাটাবেজে পাঠানোর সময় অবশ্যই price-কে Number(price) করে পাঠাবেন।
-
         res.send(result);
       } catch (error) {
         console.error("Error fetching filtered properties:", error);
         res.status(500).send({ message: "Internal server error", error: error.message });
       }
     });
+
+    //get property detail page 
+    app.get("/properties/:id", async (req, res) => {
+      try {
+        const { id } = req.params
+        const property =await propertyCollection.findOne({ _id:new ObjectId(id) })
+        res.json(property)
+      } catch (error) {
+        console.log(error);
+        
+      }
+    })
 
   } finally {
     // Ensures that the client will close when you finish/error
