@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 app.get('/', (req, res) => {
   res.send('NextHome Server is Running!')
 });
@@ -165,6 +165,57 @@ async function run() {
       const result = await cursor.toArray()
       res.json(result)
     })
+
+    // 🔥 API to update payment status to 'paid' after a successful payment
+    app.post("/api/bookings/update-status", async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+
+        if (!sessionId) {
+          return res.status(400).json({ success: false, message: "Session ID is required" });
+        }
+
+        // 1. Retrieve the session object from Stripe (including metadata)
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        // 2. Check if the payment status is actually 'paid'
+        if (session.payment_status === 'paid') {
+
+          // Extract IDs from the Stripe session metadata
+          const { tenantId, propertyId } = session.metadata;
+
+          // 3. Update the booking data in MongoDB matching tenantId and propertyId
+          const result = await BookingCOllection.updateOne(
+            {
+              propertyId: propertyId,
+              tenantId: tenantId,
+              paymentStatus: "unpaid" // Only update bookings that are currently pending
+            },
+            {
+              $set: { paymentStatus: "paid" }
+            }
+          );
+
+          if (result.matchedCount === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "No pending booking found matching these details, or it is already paid."
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: "Payment verified successfully. Booking status updated to paid!"
+          });
+        }
+
+        return res.status(400).json({ success: false, message: "Payment is incomplete." });
+
+      } catch (error) {
+        console.error("Error updating payment status:", error);
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    });
 
   } finally {
     // Ensures that the client will close when you finish/error
