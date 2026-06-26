@@ -217,6 +217,18 @@ async function run() {
       }
     });
 
+    // owner dashboard query
+    app.get("/dashboard/owner", async (req, res) => {
+      const query = {}
+      if (req.query.ownerEmail) {
+        query.ownerEmail = req.query.ownerEmail
+      }
+      const cursor = propertyCollection.find(query)
+      const result = await cursor.toArray()
+      res.json(result)
+    })
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
