@@ -227,6 +227,41 @@ async function run() {
       const result = await cursor.toArray()
       res.json(result)
     })
+    // owner property delete 
+    app.delete("/dashboard/owner/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await propertyCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // update owner property 
+    app.patch("/dashboard/owner/:id", async (req, res) => {
+  const id = req.params.id;
+  const updatedData = req.body; // ফ্রন্টএন্ড থেকে পাঠানো সম্পূর্ণ অবজেক্ট
+  const filter = { _id: new ObjectId(id) };
+  
+  const updateDoc = {
+    $set: {
+      title: updatedData.title,
+      location: updatedData.location,
+      propertyType: updatedData.propertyType,
+      price: updatedData.price,
+      rentType: updatedData.rentType,
+      bedrooms: updatedData.bedrooms,
+      bathrooms: updatedData.bathrooms,
+      size: updatedData.size,
+      amenities: updatedData.amenities,
+      extraFeatures: updatedData.extraFeatures,
+      images: updatedData.images,
+      description: updatedData.description,
+      ownerPhone: updatedData.ownerPhone,
+    },
+  };
+
+  const result = await propertyCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
 
 
   } finally {
