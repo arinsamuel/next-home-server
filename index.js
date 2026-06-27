@@ -263,6 +263,11 @@ async function run() {
   res.send(result);
 });
 
+// get booking all data for BookingRequestPage
+app.get("/all/booking",async(req,res)=>{
+   const result =await BookingCOllection.find().toArray()
+   res.send(result)
+})
 
   } finally {
     // Ensures that the client will close when you finish/error
