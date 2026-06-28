@@ -33,6 +33,7 @@ async function run() {
     const propertyCollection = database.collection("all-property");
     const BookingCOllection = database.collection("BookingData")
     const favouritePropertyCollection = database.collection("favouriteProperty")
+    const alluser = database.collection("user")
 
     // add-property 
     app.post('/owner/add-property', async (req, res) => {
@@ -318,6 +319,19 @@ app.patch('/bookings/:id', async (req, res) => {
         });
     }
 });
+
+// get all user 
+app.get("/allusers",async(req,res)=>{
+  const data = await alluser.find().toArray()
+  res.send(data)
+})
+
+// get all property
+app.get("/all/property",async(req,res)=>{
+  const data = await propertyCollection.find().toArray()
+  res.send(data)
+})
+
 
   } finally {
     // Ensures that the client will close when you finish/error
