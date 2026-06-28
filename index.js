@@ -155,6 +155,17 @@ async function run() {
 
       res.send(result);
     });
+    // BookedProperty delete
+    app.delete("/BookedProperty", async (req, res) => {
+      const { propertyId, tenantId } = req.query; // কুয়েরি প্যারামিটার থেকে আইডি নেওয়া হচ্ছে
+
+      const result = await BookingCOllection.deleteOne({
+        propertyId: propertyId,
+        tenantId: tenantId
+      });
+
+      res.send(result);
+    });
 
     app.get("/favouriteproperty", async (req, res) => {
       const query = {}
@@ -268,6 +279,45 @@ app.get("/all/booking",async(req,res)=>{
    const result =await BookingCOllection.find().toArray()
    res.send(result)
 })
+
+// booking status update form owner 
+app.patch('/bookings/:id', async (req, res) => {
+    try {
+        const { id } = req.params; 
+        const { bookingStatus } = req.body; 
+
+        if (!['accepted', 'rejected'].includes(bookingStatus)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid status. Allowed values are 'accepted' or 'rejected'." 
+            });
+        }
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+            $set: { bookingStatus: bookingStatus }
+        };
+        const result = await BookingCOllection.updateOne(query, updateDoc); 
+
+        if (result.modifiedCount === 1) {
+            return res.status(200).json({ 
+                success: true, 
+                message: `Booking has been ${bookingStatus} successfully.` 
+            });
+        } else {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Booking not found or no changes made." 
+            });
+        }
+    } catch (error) {
+        console.error("Backend Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal server error", 
+            error: error.message 
+        });
+    }
+});
 
   } finally {
     // Ensures that the client will close when you finish/error
