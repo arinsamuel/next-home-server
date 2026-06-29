@@ -123,7 +123,7 @@ async function run() {
     });
 
     //get property detail page 
-    app.get("/properties/:id", async (req, res) => {
+    app.get("/properties/:id",verifyToken, async (req, res) => {
       try {
         const { id } = req.params
         const property = await propertyCollection.findOne({ _id: new ObjectId(id) })
@@ -154,7 +154,7 @@ async function run() {
     })
 
     // get booking data
-    app.get("/booking/data", async (req, res) => {
+    app.get("/booking/data",verifyToken, async (req, res) => {
       const query = {}
       if (req.query.tenantId) {
         query.tenantId = req.query.tenantId
@@ -203,7 +203,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/favouriteproperty", async (req, res) => {
+    app.get("/favouriteproperty",verifyToken, async (req, res) => {
       const query = {}
       if (req.query.tenantId) {
         query.tenantId = req.query.tenantId
@@ -265,7 +265,7 @@ async function run() {
     });
 
     // owner dashboard query
-    app.get("/dashboard/owner", async (req, res) => {
+    app.get("/dashboard/owner",verifyToken, async (req, res) => {
       const query = {}
       if (req.query.ownerEmail) {
         query.ownerEmail = req.query.ownerEmail
@@ -311,7 +311,7 @@ async function run() {
     });
 
     // get booking all data for BookingRequestPage
-    app.get("/all/booking", async (req, res) => {
+    app.get("/all/booking",verifyToken, async (req, res) => {
       const result = await BookingCOllection.find().toArray()
       res.send(result)
     })
@@ -356,7 +356,7 @@ async function run() {
     });
 
     // get all user 
-    app.get("/allusers", async (req, res) => {
+    app.get("/allusers",verifyToken, async (req, res) => {
       const data = await alluser.find().toArray()
       res.send(data)
     })
