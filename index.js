@@ -29,11 +29,16 @@ const client = new MongoClient(uri, {
   }
 });
 
-async function run() {
-  try {
-    await client.connect();
-    // await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+client.connect(()=>{
+  console.log('connecting to mongodb');
+}).catch(console.dir)
+
+
+// async function run() {
+//   try {
+//     await client.connect();
+//     // await client.db("admin").command({ ping: 1 });
+//     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     const database = client.db("NEXT-HOME");
     const propertyCollection = database.collection("all-property");
@@ -475,13 +480,15 @@ async function run() {
     });
 
 
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
-  }
-}
-run().catch(console.dir);
+//   } finally {
+//     // Ensures that the client will close when you finish/error
+//     // await client.close();
+//   }
+// }
+// run().catch(console.dir);
 
 app.listen(port, () => {
   console.log(`NextHome server listening on port ${port}`)
 });
+
+module.exports =app
