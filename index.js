@@ -9,6 +9,12 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+const logger = (req, res, next) => {
+  console.log("logger logged", req.params);
+  next()
+}
+
 app.get('/', (req, res) => {
   res.send('NextHome Server is Running!')
 });
@@ -35,6 +41,42 @@ async function run() {
     const favouritePropertyCollection = database.collection("favouriteProperty")
     const alluser = database.collection("user")
     const transactionCollection = database.collection("transactions");
+    const sessionCollection = database.collection("session");
+
+
+    // verification related
+    const verifyToken = async (req, res, next) => {
+      console.log("headers", req.headers);
+      const authHeader = req.headers?.authorization
+      if (!authHeader) {
+        return res.status(401).send({ message: "unauthorized access" })
+      }
+      const token = authHeader.split(' ')[1]
+      if (!token) {
+        return res.status(401).send({ message: "unauthorized access" })
+      }
+
+      const query = { token: token }
+      const session = await sessionCollection.findOne(query)
+
+      const userId = session.userId
+      console.log("session", userId);
+      const userQuery = {
+        _id: userId
+      }
+      const user = await alluser.findOne(userQuery)
+      // set data in the req object 
+      req.user = user
+
+      next()
+    }
+
+    const verifySeeker = async (req, res, next) => {
+      if (req.user?.role !== "tenant") {
+        return res.status(401).send({ message: "unauthorized access" })
+      }
+    }
+
 
     // add-property 
     app.post('/owner/add-property', async (req, res) => {
@@ -320,7 +362,7 @@ async function run() {
     })
 
     // get all property
-    app.get("/all/property", async (req, res) => {
+    app.get("/all/property", verifyToken, async (req, res) => {
       const data = await propertyCollection.find().toArray()
       res.send(data)
     })
@@ -380,8 +422,8 @@ async function run() {
       }
     });
 
-    // update propery status 
-    app.patch('/api/properties/:id', async (req, res) => {
+    // update property status 
+    app.patch('/api/properties/:id', logger, verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
         const { status, feedback } = req.body;
@@ -408,29 +450,29 @@ async function run() {
     });
 
     // change user role 
-app.patch('/api/users/:id/role', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
+    app.patch('/api/users/:id/role', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { role } = req.body;
 
-    // যদি সরাসরি MongoDB native driver ব্যবহার করেন:
-    const result = await alluser.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { role: role } }
-    );
+        // যদি সরাসরি MongoDB native driver ব্যবহার করেন:
+        const result = await alluser.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role: role } }
+        );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ success: false, message: "User not found" });
+        }
 
-    res.status(200).json({ success: true, message: "Role updated successfully!" });
+        res.status(200).json({ success: true, message: "Role updated successfully!" });
 
-  } catch (error) {
-    // এই লগটি আপনার নোড সার্ভারের টার্মিনালে প্রিন্ট হবে
-    console.error("SERVER CRASH ERROR:", error); 
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+      } catch (error) {
+        // এই লগটি আপনার নোড সার্ভারের টার্মিনালে প্রিন্ট হবে
+        console.error("SERVER CRASH ERROR:", error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
 
 
   } finally {
