@@ -34,6 +34,7 @@ async function run() {
     const BookingCOllection = database.collection("BookingData")
     const favouritePropertyCollection = database.collection("favouriteProperty")
     const alluser = database.collection("user")
+    const transactionCollection = database.collection("transactions");
 
     // add-property 
     app.post('/owner/add-property', async (req, res) => {
@@ -48,31 +49,25 @@ async function run() {
     // GET All Properties with Backend Filtering, Search & Sorting
     app.get("/properties", async (req, res) => {
       try {
-        // ফ্রন্টএন্ড থেকে আসা কুয়েরি প্যারামিটার রিসিভ করা হচ্ছে
         const { search, type, sort } = req.query;
 
-        // ১. বেসিক কুয়েরি অবজেক্ট (শুধুমাত্র Approved প্রোপার্টি দেখাবে)
         let query = { status: "Approved" };
 
-        // ২. সার্চ বাই লোকেশন (Partial match & Case-insensitive)
         if (search) {
           query.location = { $regex: search, $options: 'i' };
         }
 
-        // ৩. ফিল্টার বাই প্রোপার্টি টাইপ
         if (type) {
           query.propertyType = type;
         }
 
-        // ৪. সর্টিং অপশন সেটআপ (ডিফল্ট ক্রিয়েশন ডেট অনুযায়ী থাকবে)
         let sortOption = {};
         if (sort === "low-to-high") {
-          sortOption.price = 1; // ছোট থেকে বড়
+          sortOption.price = 1;
         } else if (sort === "high-to-low") {
-          sortOption.price = -1; // বড় থেকে ছোট
+          sortOption.price = -1;
         }
 
-        // ডাটাবেজ থেকে কুয়েরি অনুযায়ী ডেটা ফেচ করা
         const result = await propertyCollection
           .find(query)
           .sort(sortOption)
@@ -131,7 +126,6 @@ async function run() {
     app.post("/favouriteproperty", async (req, res) => {
       const data = req.body;
 
-      // ডুপ্লিকেট এড়াতে প্রথমে চেক করে নিই এই ইউজার অলরেডি এই প্রপার্টি সেভ করেছে কি না
       const exists = await favouritePropertyCollection.findOne({
         propertyId: data.propertyId,
         tenantId: data.tenantId
@@ -145,9 +139,9 @@ async function run() {
       res.send(result);
     });
 
-    // ২. ফেভারিট লিস্ট থেকে ডিলিট করার API
+
     app.delete("/favouriteproperty", async (req, res) => {
-      const { propertyId, tenantId } = req.query; // কুয়েরি প্যারামিটার থেকে আইডি নেওয়া হচ্ছে
+      const { propertyId, tenantId } = req.query;
 
       const result = await favouritePropertyCollection.deleteOne({
         propertyId: propertyId,
@@ -158,8 +152,7 @@ async function run() {
     });
     // BookedProperty delete
     app.delete("/BookedProperty", async (req, res) => {
-      const { propertyId, tenantId } = req.query; // কুয়েরি প্যারামিটার থেকে আইডি নেওয়া হচ্ছে
-
+      const { propertyId, tenantId } = req.query;
       const result = await BookingCOllection.deleteOne({
         propertyId: propertyId,
         tenantId: tenantId
@@ -249,88 +242,195 @@ async function run() {
 
     // update owner property 
     app.patch("/dashboard/owner/:id", async (req, res) => {
-  const id = req.params.id;
-  const updatedData = req.body; // ফ্রন্টএন্ড থেকে পাঠানো সম্পূর্ণ অবজেক্ট
-  const filter = { _id: new ObjectId(id) };
-  
-  const updateDoc = {
-    $set: {
-      title: updatedData.title,
-      location: updatedData.location,
-      propertyType: updatedData.propertyType,
-      price: updatedData.price,
-      rentType: updatedData.rentType,
-      bedrooms: updatedData.bedrooms,
-      bathrooms: updatedData.bathrooms,
-      size: updatedData.size,
-      amenities: updatedData.amenities,
-      extraFeatures: updatedData.extraFeatures,
-      images: updatedData.images,
-      description: updatedData.description,
-      ownerPhone: updatedData.ownerPhone,
-    },
-  };
+      const id = req.params.id;
+      const updatedData = req.body;
+      const filter = { _id: new ObjectId(id) };
 
-  const result = await propertyCollection.updateOne(filter, updateDoc);
-  res.send(result);
-});
+      const updateDoc = {
+        $set: {
+          title: updatedData.title,
+          location: updatedData.location,
+          propertyType: updatedData.propertyType,
+          price: updatedData.price,
+          rentType: updatedData.rentType,
+          bedrooms: updatedData.bedrooms,
+          bathrooms: updatedData.bathrooms,
+          size: updatedData.size,
+          amenities: updatedData.amenities,
+          extraFeatures: updatedData.extraFeatures,
+          images: updatedData.images,
+          description: updatedData.description,
+          ownerPhone: updatedData.ownerPhone,
+        },
+      };
 
-// get booking all data for BookingRequestPage
-app.get("/all/booking",async(req,res)=>{
-   const result =await BookingCOllection.find().toArray()
-   res.send(result)
-})
+      const result = await propertyCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
-// booking status update form owner 
-app.patch('/bookings/:id', async (req, res) => {
-    try {
-        const { id } = req.params; 
-        const { bookingStatus } = req.body; 
+    // get booking all data for BookingRequestPage
+    app.get("/all/booking", async (req, res) => {
+      const result = await BookingCOllection.find().toArray()
+      res.send(result)
+    })
+
+    // booking status update form owner 
+    app.patch('/bookings/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { bookingStatus } = req.body;
 
         if (!['accepted', 'rejected'].includes(bookingStatus)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid status. Allowed values are 'accepted' or 'rejected'." 
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Invalid status. Allowed values are 'accepted' or 'rejected'."
+          });
         }
         const query = { _id: new ObjectId(id) };
         const updateDoc = {
-            $set: { bookingStatus: bookingStatus }
+          $set: { bookingStatus: bookingStatus }
         };
-        const result = await BookingCOllection.updateOne(query, updateDoc); 
+        const result = await BookingCOllection.updateOne(query, updateDoc);
 
         if (result.modifiedCount === 1) {
-            return res.status(200).json({ 
-                success: true, 
-                message: `Booking has been ${bookingStatus} successfully.` 
-            });
+          return res.status(200).json({
+            success: true,
+            message: `Booking has been ${bookingStatus} successfully.`
+          });
         } else {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Booking not found or no changes made." 
-            });
+          return res.status(404).json({
+            success: false,
+            message: "Booking not found or no changes made."
+          });
         }
-    } catch (error) {
+      } catch (error) {
         console.error("Backend Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Internal server error", 
-            error: error.message 
+        res.status(500).json({
+          success: false,
+          message: "Internal server error",
+          error: error.message
         });
+      }
+    });
+
+    // get all user 
+    app.get("/allusers", async (req, res) => {
+      const data = await alluser.find().toArray()
+      res.send(data)
+    })
+
+    // get all property
+    app.get("/all/property", async (req, res) => {
+      const data = await propertyCollection.find().toArray()
+      res.send(data)
+    })
+
+
+    // payment  transaction 
+    app.post("/api/transactions/save", async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+
+        if (!sessionId) {
+          return res.status(400).json({ success: false, message: "Session ID is required" });
+        }
+
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        console.log("============== STRIPE METADATA ==============");
+        console.log(session.metadata);
+        console.log("=============================================");
+
+        if (session.payment_status === 'paid') {
+          const transactionId = session.payment_intent || session.id;
+
+          const existingTx = await transactionCollection.findOne({ transactionId });
+
+          if (!existingTx) {
+            const transactionInfo = {
+              transactionId: transactionId,
+              tenantName: session.customer_details?.name || "Premium Tenant",
+              propertyName: session.metadata?.propertyName || "Premium Property",
+              ownerName: session.metadata?.ownerName || "M. R. Rahman",
+              amount: session.amount_total / 100,
+              date: new Date(),
+              tenantId: session.metadata?.tenantId || "N/A",
+              propertyId: session.metadata?.propertyId || "N/A"
+            };
+
+            await transactionCollection.insertOne(transactionInfo);
+          }
+
+          return res.status(200).json({ success: true, message: "Transaction recorded!" });
+        }
+
+        return res.status(400).json({ success: false, message: "Payment not paid" });
+      } catch (error) {
+        console.error("Transaction Error:", error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    app.get('/api/transactions', async (req, res) => {
+      try {
+        const result = await transactionCollection.find().sort({ date: -1 }).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        res.status(500).send({ success: false, message: error.message });
+      }
+    });
+
+    // update propery status 
+    app.patch('/api/properties/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status, feedback } = req.body;
+
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            status: status,
+            feedback: status === 'Rejected' ? feedback : ''
+          }
+        };
+
+        const result = await propertyCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ message: "Property not found" });
+        }
+
+        return res.status(200).json({ message: "Success", updatedCount: result.modifiedCount });
+      } catch (error) {
+        console.error("Database Error:", error);
+        return res.status(500).json({ message: "Error", error: error.message });
+      }
+    });
+
+    // change user role 
+app.patch('/api/users/:id/role', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    // যদি সরাসরি MongoDB native driver ব্যবহার করেন:
+    const result = await alluser.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { role: role } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
+
+    res.status(200).json({ success: true, message: "Role updated successfully!" });
+
+  } catch (error) {
+    // এই লগটি আপনার নোড সার্ভারের টার্মিনালে প্রিন্ট হবে
+    console.error("SERVER CRASH ERROR:", error); 
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
-
-// get all user 
-app.get("/allusers",async(req,res)=>{
-  const data = await alluser.find().toArray()
-  res.send(data)
-})
-
-// get all property
-app.get("/all/property",async(req,res)=>{
-  const data = await propertyCollection.find().toArray()
-  res.send(data)
-})
 
 
   } finally {
