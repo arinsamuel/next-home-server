@@ -6,7 +6,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 dotenv.config();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: "https://next-home-nu.vercel.app", 
+  credentials: true 
+}));
 app.use(express.json());
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
